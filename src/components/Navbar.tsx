@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
-import { User, Home, Settings, Menu, X, Building, Calendar } from 'lucide-react';
+import { User, Home, Settings, Menu, X, Building, Calendar, MessageSquare } from 'lucide-react';
 import { useState } from 'react';
 
 const Navbar = () => {
@@ -55,6 +55,14 @@ const Navbar = () => {
                     <span className="hidden lg:inline">Reservas</span>
                   </Button>
                 </Link>
+                
+                <Link to="/mensagens">
+                  <Button variant="ghost" size="sm" className="touch-target">
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    <span className="hidden lg:inline">Mensagens</span>
+                  </Button>
+                </Link>
+
 
                 {role === 'proprietario' && (
                   <Link to="/propriedades">
@@ -133,6 +141,14 @@ const Navbar = () => {
                       Reservas
                     </Button>
                   </Link>
+                  
+                  <Link to="/mensagens" onClick={closeMenu}>
+                    <Button variant="ghost" size="sm" className="w-full justify-start h-12 text-base touch-target">
+                      <MessageSquare className="w-5 h-5 mr-3" />
+                      Mensagens
+                    </Button>
+                  </Link>
+
 
                   {role === 'proprietario' && (
                     <Link to="/propriedades" onClick={closeMenu}>

@@ -20,8 +20,7 @@ import PropertyOwnerCard from '@/components/PropertyOwnerCard';
 import { ImageLightbox } from '@/components/ImageLightbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { toast } from '@/hooks/use-toast';
-
+import { toast } from '@/components/ui/use-toast';
 interface Property {
   id: string;
   title: string;
@@ -46,33 +45,32 @@ const PropertyDetails = () => {
   const handleStartChat = async () => {
     try {
       if (!property?.id) {
-        toast({ title: 'Imóvel não encontrado.', variant: 'destructive' });
+        toast?.error?.('Imóvel não encontrado.') ?? console.error('Imóvel não encontrado.');
         return;
       }
       if (!user?.id) {
         if (typeof toast !== 'undefined') {
-          toast({ title: 'Faça login para conversar com o proprietário.', description: 'Você será redirecionado para a página de login.' });
+          toast('Faça login para conversar com o proprietário.', { description: 'Você será redirecionado para a página de login.' });
         }
         navigate(`/auth?next=${encodeURIComponent(location.pathname)}`);
         return;
       }
       const convId = await getOrCreateConversationForProperty(property.id);
       if (!convId) {
-        toast({ title: 'Não foi possível iniciar a conversa.', variant: 'destructive' });
+        toast?.error?.('Não foi possível iniciar a conversa.') ?? console.error('Não foi possível iniciar a conversa.');
         return;
       }
-      if (typeof toast !== 'undefined') toast({ title: 'Conversa iniciada.' });
+      if (typeof toast !== 'undefined') toast.success('Conversa iniciada.');
       navigate(`/mensagens#${convId}`);
     } catch (e) {
       console.error('start chat error', e);
-      if (typeof toast !== 'undefined') toast({ title: 'Erro ao iniciar conversa.', variant: 'destructive' });
+      if (typeof toast !== 'undefined') toast.error('Erro ao iniciar conversa.');
     }
   };
 
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { toast } = useToast();
   const { user } = useAuth();
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);

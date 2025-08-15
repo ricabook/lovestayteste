@@ -9,7 +9,7 @@ export function useMessaging(conversationId?: string) {
   const [loading, setLoading] = useState<boolean>(true);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  // Gera ID temporário simples
+  // ID temporário simples (sem uuid)
   const genTempId = () => "temp-" + Math.random().toString(36).substring(2, 9);
 
   // Carrega mensagens iniciais
@@ -100,4 +100,14 @@ export function useMessaging(conversationId?: string) {
   };
 
   return { messages, loading, sendMessage };
+}
+
+// Helper para criar/pegar conversa pelo imóvel (usado no PropertyDetails)
+export async function getOrCreateConversationForProperty(propertyId: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc("get_or_create_conversation_for_property", { prop_id: propertyId });
+  if (error) {
+    console.error("getOrCreateConversationForProperty", error);
+    return null;
+  }
+  return data as unknown as string;
 }

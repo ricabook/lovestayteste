@@ -21,6 +21,7 @@ import { ImageLightbox } from '@/components/ImageLightbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/components/ui/use-toast';
+
 interface Property {
   id: string;
   title: string;
@@ -39,9 +40,8 @@ interface Property {
   owner_id?: string; // Optional since public view doesn't include it
 }
 
-
-
 const PropertyDetails = () => {
+<<<<<<< HEAD
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -63,7 +63,7 @@ const PropertyDetails = () => {
         return;
       }
       setChatLoading(true);
-      const { id: convId, error } = await getOrCreateConversationForProperty(property.id, (property as any).owner_id);
+      const { id: convId, error } = await getOrCreateConversationForProperty(property.id, (property as any).owner_id ?? undefined);
       if (!convId) {
         toast({ title: 'Não foi possível iniciar a conversa', description: error || 'Tente novamente em instantes.', variant: 'destructive' });
         return;
@@ -77,6 +77,43 @@ const PropertyDetails = () => {
       setChatLoading(false);
     }
   };
+  const [chatLoading, setChatLoading] = useState(false);
+=======
+>>>>>>> ce632586276e0ac2ae127789a9ec8c502a017f35
+
+      if (!user?.id) {
+<<<<<<< HEAD
+        toast({
+=======
+        toast({ 
+>>>>>>> ce632586276e0ac2ae127789a9ec8c502a017f35
+          title: 'Faça login para conversar com o proprietário.',
+          description: 'Você será redirecionado para a página de login.'
+        });
+        navigate(`/auth?next=${encodeURIComponent(location.pathname)}`);
+        return;
+      }
+      const convId = await getOrCreateConversationForProperty(property.id);
+      if (!convId) {
+        toast({ title: 'Não foi possível iniciar a conversa.', variant: 'destructive' });
+        return;
+      }
+      toast({ title: 'Conversa iniciada.' });
+      navigate(`/mensagens#${convId}`);
+    } catch (e) {
+      console.error('start chat error', e);
+      toast({ title: 'Erro ao iniciar conversa.', variant: 'destructive' });
+    }
+  };
+
+<<<<<<< HEAD
+=======
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
+  const [property, setProperty] = useState<Property | null>(null);
+>>>>>>> ce632586276e0ac2ae127789a9ec8c502a017f35
   const [loading, setLoading] = useState(true);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -88,7 +125,6 @@ const PropertyDetails = () => {
   const [checkOutDate, setCheckOutDate] = useState<Date>();
   const [guestCount, setGuestCount] = useState(1);
   const [bookingLoading, setBookingLoading] = useState(false);
-  const [chatLoading, setChatLoading] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -695,11 +731,10 @@ const PropertyDetails = () => {
                   <Button 
                     variant="outline"
                     onClick={handleStartChat}
-                    disabled={chatLoading} className="w-full h-12 mt-2"
-                  >
+                    className="w-full h-12 mt-2"
+                   disabled={chatLoading}>
                     Iniciar conversa com o proprietário
                   </Button>
-
 
                   {bookedDates.length > 0 && (
                     <p className="text-xs text-muted-foreground mt-3 text-center">

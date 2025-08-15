@@ -4,7 +4,6 @@ import { format, differenceInDays, addDays, parseISO, eachDayOfInterval, isEqual
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -42,33 +41,36 @@ interface Property {
 
 
 
-const handleStartChat = async () => {
-  try {
-    if (!property?.id) {
-      toast.error('Imóvel não encontrado.');
-      return;
-    }
-    if (!user?.id) {
-      toast('Faça login para conversar com o proprietário.', { description: 'Você será redirecionado para a página de login.' });
-      navigate(`/auth?next=${encodeURIComponent(location.pathname)}`);
-      return;
-    }
-    const convId = await getOrCreateConversationForProperty(property.id);
-    if (!convId) {
-      toast.error('Não foi possível iniciar a conversa.');
-      return;
-    }
-    toast.success('Conversa iniciada.');
-    navigate(`/mensagens#${convId}`);
-  } catch (e) {
-    console.error('start chat error', e);
-    toast.error('Erro ao iniciar conversa.');
-  }
-};
-
 const PropertyDetails = () => {
+  const handleStartChat = async () => {
+    try {
+      if (!property?.id) {
+        toast?.error?.('Imóvel não encontrado.') ?? console.error('Imóvel não encontrado.');
+        return;
+      }
+      if (!user?.id) {
+        if (typeof toast !== 'undefined') {
+          toast('Faça login para conversar com o proprietário.', { description: 'Você será redirecionado para a página de login.' });
+        }
+        navigate(`/auth?next=${encodeURIComponent(location.pathname)}`);
+        return;
+      }
+      const convId = await getOrCreateConversationForProperty(property.id);
+      if (!convId) {
+        toast?.error?.('Não foi possível iniciar a conversa.') ?? console.error('Não foi possível iniciar a conversa.');
+        return;
+      }
+      if (typeof toast !== 'undefined') toast.success('Conversa iniciada.');
+      navigate(`/mensagens#${convId}`);
+    } catch (e) {
+      console.error('start chat error', e);
+      if (typeof toast !== 'undefined') toast.error('Erro ao iniciar conversa.');
+    }
+  };
+
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);

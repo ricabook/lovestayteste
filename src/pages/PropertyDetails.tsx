@@ -42,22 +42,28 @@ interface Property {
 
 
 const PropertyDetails = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
+  const [property, setProperty] = useState<Property | null>(null);
   const handleStartChat = async () => {
     try {
       if (!property?.id) {
-        toast?.error?.('Imóvel não encontrado.') ?? console.error('Imóvel não encontrado.');
+        toast({ title: 'Imóvel não encontrado.', variant: 'destructive' });
         return;
       }
       if (!user?.id) {
-        if (typeof toast !== 'undefined') {
-          toast('Faça login para conversar com o proprietário.', { description: 'Você será redirecionado para a página de login.' });
-        }
+        toast({
+          title: 'Faça login para conversar com o proprietário.',
+          description: 'Você será redirecionado para a página de login.'
+        });
         navigate(`/auth?next=${encodeURIComponent(location.pathname)}`);
         return;
       }
       const convId = await getOrCreateConversationForProperty(property.id);
       if (!convId) {
-        toast?.error?.('Não foi possível iniciar a conversa.') ?? console.error('Não foi possível iniciar a conversa.');
+        toast({ title: 'Não foi possível iniciar a conversa.', variant: 'destructive' });
         return;
       }
       toast({ title: 'Conversa iniciada.' });
@@ -68,11 +74,6 @@ const PropertyDetails = () => {
     }
   };
 
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { user } = useAuth();
-  const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);

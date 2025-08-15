@@ -60,11 +60,11 @@ const PropertyDetails = () => {
         toast?.error?.('Não foi possível iniciar a conversa.') ?? console.error('Não foi possível iniciar a conversa.');
         return;
       }
-      if (typeof toast !== 'undefined') toast.success('Conversa iniciada.');
+      toast({ title: 'Conversa iniciada.' });
       navigate(`/mensagens#${convId}`);
     } catch (e) {
       console.error('start chat error', e);
-      if (typeof toast !== 'undefined') toast.error('Erro ao iniciar conversa.');
+      toast({ title: 'Erro ao iniciar conversa.', variant: 'destructive' });
     }
   };
 

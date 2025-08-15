@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { format, differenceInDays, addDays, parseISO, eachDayOfInterval, isEqual } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,11 +41,28 @@ interface Property {
 }
 
 
+
 const handleStartChat = async () => {
-  if (!property?.id) return;
-  const convId = await getOrCreateConversationForProperty(property.id);
-  if (convId) {
-    window.location.href = `/mensagens#${convId}`;
+  try {
+    if (!property?.id) {
+      toast.error('Imóvel não encontrado.');
+      return;
+    }
+    if (!user?.id) {
+      toast('Faça login para conversar com o proprietário.', { description: 'Você será redirecionado para a página de login.' });
+      navigate(`/auth?next=${encodeURIComponent(location.pathname)}`);
+      return;
+    }
+    const convId = await getOrCreateConversationForProperty(property.id);
+    if (!convId) {
+      toast.error('Não foi possível iniciar a conversa.');
+      return;
+    }
+    toast.success('Conversa iniciada.');
+    navigate(`/mensagens#${convId}`);
+  } catch (e) {
+    console.error('start chat error', e);
+    toast.error('Erro ao iniciar conversa.');
   }
 };
 

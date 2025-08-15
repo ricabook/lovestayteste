@@ -46,32 +46,33 @@ const PropertyDetails = () => {
   const handleStartChat = async () => {
     try {
       if (!property?.id) {
-        toast?.error?.('Imóvel não encontrado.') ?? console.error('Imóvel não encontrado.');
+        toast({ title: 'Imóvel não encontrado.', variant: 'destructive' });
         return;
       }
       if (!user?.id) {
         if (typeof toast !== 'undefined') {
-          toast('Faça login para conversar com o proprietário.', { description: 'Você será redirecionado para a página de login.' });
+          toast({ title: 'Faça login para conversar com o proprietário.', description: 'Você será redirecionado para a página de login.' });
         }
         navigate(`/auth?next=${encodeURIComponent(location.pathname)}`);
         return;
       }
       const convId = await getOrCreateConversationForProperty(property.id);
       if (!convId) {
-        toast?.error?.('Não foi possível iniciar a conversa.') ?? console.error('Não foi possível iniciar a conversa.');
+        toast({ title: 'Não foi possível iniciar a conversa.', variant: 'destructive' });
         return;
       }
-      if (typeof toast !== 'undefined') toast.success('Conversa iniciada.');
+      if (typeof toast !== 'undefined') toast({ title: 'Conversa iniciada.' });
       navigate(`/mensagens#${convId}`);
     } catch (e) {
       console.error('start chat error', e);
-      if (typeof toast !== 'undefined') toast.error('Erro ao iniciar conversa.');
+      if (typeof toast !== 'undefined') toast({ title: 'Erro ao iniciar conversa.', variant: 'destructive' });
     }
   };
 
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
   const { user } = useAuth();
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);

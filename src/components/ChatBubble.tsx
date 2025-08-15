@@ -22,28 +22,33 @@ export default function ChatBubble({ body, created_at, sender_id, avatarUrl, nam
     .join("") || "?";
 
   return (
-    <div className={cn("flex w-full items-end gap-2", mine ? "justify-end" : "justify-start")}>
+    <div className={cn("flex w-full items-end gap-2 mb-4", mine ? "justify-end" : "justify-start")}>
       {!mine && (
-        <Avatar className="h-7 w-7">
+        <Avatar className="h-8 w-8 flex-shrink-0">
           <AvatarImage src={avatarUrl ?? undefined} alt={name ?? "avatar"} />
-          <AvatarFallback>{initials}</AvatarFallback>
+          <AvatarFallback className="text-xs">{initials}</AvatarFallback>
         </Avatar>
       )}
       <div
         className={cn(
-          "max-w-[80%] rounded-2xl px-4 py-2 my-1 text-sm shadow-sm",
-          mine ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none"
+          "max-w-[85%] sm:max-w-[70%] rounded-2xl px-3 py-2 text-sm shadow-sm break-words",
+          mine 
+            ? "bg-primary text-primary-foreground rounded-br-md" 
+            : "bg-muted text-foreground rounded-bl-md"
         )}
       >
-        <div className="whitespace-pre-wrap">{body}</div>
-        <div className={cn("mt-1 text-[10px] opacity-70", mine ? "text-primary-foreground" : "text-foreground")}>
-          {format(new Date(created_at), "dd/MM/yyyy HH:mm")}
+        <div className="whitespace-pre-wrap leading-relaxed">{body}</div>
+        <div className={cn(
+          "mt-2 text-[10px] opacity-70 text-right", 
+          mine ? "text-primary-foreground/70" : "text-muted-foreground"
+        )}>
+          {format(new Date(created_at), "HH:mm")}
         </div>
       </div>
       {mine && (
-        <Avatar className="h-7 w-7">
+        <Avatar className="h-8 w-8 flex-shrink-0">
           <AvatarImage src={avatarUrl ?? undefined} alt={name ?? "avatar"} />
-          <AvatarFallback>{initials}</AvatarFallback>
+          <AvatarFallback className="text-xs">{initials}</AvatarFallback>
         </Avatar>
       )}
     </div>

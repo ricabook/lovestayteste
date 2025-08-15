@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
 
-type Message = Database["public"]["Tables"]["messages"]["Row"];
+type Message = {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  body: string;
+  created_at: string;
+};
 
 export function useMessaging(conversationId?: string) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -84,7 +89,11 @@ export function useMessaging(conversationId?: string) {
 
     const { data, error } = await supabase
       .from("messages")
-      .insert({ conversation_id: conversationId, body: body.trim() })
+      .insert({ 
+        conversation_id: conversationId, 
+        body: body.trim(),
+        sender_id: "current-user" // This will be overridden by the trigger
+      })
       .select("*")
       .single();
 
@@ -104,10 +113,15 @@ export function useMessaging(conversationId?: string) {
 
 // Helper para criar/pegar conversa pelo imóvel (usado no PropertyDetails)
 export async function getOrCreateConversationForProperty(propertyId: string): Promise<string | null> {
-  const { data, error } = await supabase.rpc("get_or_create_conversation_for_property", { prop_id: propertyId });
-  if (error) {
+  try {
+    const { data, error } = await supabase.rpc("get_or_create_conversation_for_property", { prop_id: propertyId });
+    if (error) {
+      console.error("getOrCreateConversationForProperty", error);
+      return null;
+    }
+    return data as string;
+  } catch (error) {
     console.error("getOrCreateConversationForProperty", error);
     return null;
   }
-  return data as unknown as string;
 }

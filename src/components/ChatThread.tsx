@@ -16,7 +16,11 @@ type Conversation = {
   owner_id: string;
 };
 
-type Profile = { user_id: string; full_name: string | null; avatar_url: string | null };
+type Profile = { 
+  user_id: string; 
+  full_name: string | null; 
+  avatar_url: string | null 
+};
 
 export default function ChatThread({ conversationId }: Props) {
   const { messages, loading, sendMessage } = useMessaging(conversationId);
@@ -29,22 +33,35 @@ export default function ChatThread({ conversationId }: Props) {
   // Load conversation participants and their profiles
   useEffect(() => {
     const loadParticipants = async () => {
-      const { data: conv, error } = await supabase
-        .from("conversations")
-        .select("id,guest_id,owner_id")
-        .eq("id", conversationId)
-        .single();
-      if (error || !conv) return;
+      try {
+        const { data: conv, error } = await supabase
+          .from("conversations")
+          .select("id,guest_id,owner_id")
+          .eq("id", conversationId)
+          .single();
+        
+        if (error || !conv) {
+          console.error("Error loading conversation:", error);
+          return;
+        }
 
-      const ids = [conv.guest_id, conv.owner_id];
-      const { data: profs, error: err2 } = await supabase
-        .from("profiles")
-        .select("user_id,full_name,avatar_url")
-        .in("user_id", ids);
-      if (err2) return;
-      const map: Record<string, Profile> = {};
-      (profs ?? []).forEach((p) => (map[p.user_id] = p as Profile));
-      setParticipants(map);
+        const ids = [conv.guest_id, conv.owner_id];
+        const { data: profs, error: err2 } = await supabase
+          .from("profiles")
+          .select("user_id,full_name,avatar_url")
+          .in("user_id", ids);
+        
+        if (err2) {
+          console.error("Error loading profiles:", err2);
+          return;
+        }
+        
+        const map: Record<string, Profile> = {};
+        (profs ?? []).forEach((p) => (map[p.user_id] = p as Profile));
+        setParticipants(map);
+      } catch (error) {
+        console.error("Error in loadParticipants:", error);
+      }
     };
     loadParticipants();
   }, [conversationId]);
@@ -71,10 +88,21 @@ export default function ChatThread({ conversationId }: Props) {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div ref={listRef} className="flex-1 overflow-y-auto space-y-2 p-4 border rounded-md">
-        {loading ? <div>Carregando mensagens...</div> : (
-          messages.length === 0 ? <div className="text-sm text-muted-foreground">Sem mensagens ainda.</div> :
+    <div className="flex flex-col h-full bg-background">
+      <div 
+        ref={listRef} 
+        className="flex-1 overflow-y-auto space-y-3 p-4 bg-muted/20"
+        style={{ scrollBehavior: 'smooth' }}
+      >
+        {loading ? (
+          <div className="flex items-center justify-center h-32 text-muted-foreground">
+            Carregando mensagens...
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
+            Sem mensagens ainda. Comece a conversa!
+          </div>
+        ) : (
           messages.map((m) => {
             const profile = participants[m.sender_id];
             return (
@@ -90,10 +118,28 @@ export default function ChatThread({ conversationId }: Props) {
           })
         )}
       </div>
-      <form className="mt-2 flex gap-2" onSubmit={onSubmit}>
-        <Input placeholder="Escreva sua mensagem..." value={body} onChange={(e) => setBody(e.target.value)} disabled={sending} />
-        <Button type="submit" disabled={sending}>{sending ? "Enviando..." : "Enviar"}</Button>
-      </form>
+      
+      {/* Input área com design mobile-friendly */}
+      <div className="border-t bg-background">
+        <form className="p-4 flex gap-2" onSubmit={onSubmit}>
+          <Input 
+            placeholder="Escreva sua mensagem..." 
+            value={body} 
+            onChange={(e) => setBody(e.target.value)} 
+            disabled={sending}
+            className="flex-1 min-h-[44px] touch-manipulation"
+            autoComplete="off"
+          />
+          <Button 
+            type="submit" 
+            disabled={sending || !body.trim()}
+            className="min-h-[44px] px-6 touch-manipulation"
+            size="default"
+          >
+            {sending ? "..." : "Enviar"}
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }

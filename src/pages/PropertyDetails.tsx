@@ -47,6 +47,7 @@ const PropertyDetails = () => {
   const location = useLocation();
   const { user } = useAuth();
   const [property, setProperty] = useState<Property | null>(null);
+
   const handleStartChat = async () => {
     try {
       if (!property?.id) {
@@ -61,19 +62,21 @@ const PropertyDetails = () => {
         navigate(`/auth?next=${encodeURIComponent(location.pathname)}`);
         return;
       }
-      const convId = await getOrCreateConversationForProperty(property.id);
+      setChatLoading(true);
+      const { id: convId, error } = await getOrCreateConversationForProperty(property.id, (property as any).owner_id);
       if (!convId) {
-        toast({ title: 'Não foi possível iniciar a conversa.', variant: 'destructive' });
+        toast({ title: 'Não foi possível iniciar a conversa', description: error || 'Tente novamente em instantes.', variant: 'destructive' });
         return;
       }
       toast({ title: 'Conversa iniciada.' });
       navigate(`/mensagens#${convId}`);
-    } catch (e) {
+    } catch (e: any) {
       console.error('start chat error', e);
-      toast({ title: 'Erro ao iniciar conversa.', variant: 'destructive' });
+      toast({ title: 'Erro ao iniciar conversa', description: e?.message ?? String(e), variant: 'destructive' });
+    } finally {
+      setChatLoading(false);
     }
   };
-
   const [loading, setLoading] = useState(true);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -85,6 +88,7 @@ const PropertyDetails = () => {
   const [checkOutDate, setCheckOutDate] = useState<Date>();
   const [guestCount, setGuestCount] = useState(1);
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [chatLoading, setChatLoading] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -691,7 +695,7 @@ const PropertyDetails = () => {
                   <Button 
                     variant="outline"
                     onClick={handleStartChat}
-                    className="w-full h-12 mt-2"
+                    disabled={chatLoading} className="w-full h-12 mt-2"
                   >
                     Iniciar conversa com o proprietário
                   </Button>

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import ChatThread from "@/components/ChatThread";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "@/components/ui/use-toast";
 
@@ -28,7 +28,6 @@ export default function Messages() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Helper to load metadata (properties + owners) in batch
   const loadMeta = async (convs: Conversation[]) => {
     const propIds = Array.from(new Set(convs.map(c => c.property_id).filter((x): x is string => !!x)));
     const ownerIds = Array.from(new Set(convs.map(c => c.owner_id)));
@@ -88,7 +87,6 @@ export default function Messages() {
 
   useEffect(() => {
     refresh();
-    // Realtime watcher to refresh list on INSERT/UPDATE
     const channel = supabase
       .channel("conversations-changes")
       .on(
@@ -100,7 +98,6 @@ export default function Messages() {
     return () => {
       supabase.removeChannel(channel);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   const renderLabel = (c: Conversation) => {
@@ -135,8 +132,10 @@ export default function Messages() {
                 )
               }
             </div>
-            <div className="md:col-span-2 min-h-[60vh]">
-              {activeId ? <ChatThread conversationId={activeId} /> : <div className="text-sm text-muted-foreground">Selecione uma conversa para visualizar.</div>}
+            <div className="md:col-span-2">
+              <div className="max-w-[720px] mx-auto min-h-[60vh]">
+                {activeId ? <ChatThread conversationId={activeId} /> : <div className="text-sm text-muted-foreground">Selecione uma conversa para visualizar.</div>}
+              </div>
             </div>
           </CardContent>
         </Card>

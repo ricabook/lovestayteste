@@ -39,6 +39,15 @@ interface Property {
   owner_id?: string; // Optional since public view doesn't include it
 }
 
+
+const handleStartChat = async () => {
+  if (!property?.id) return;
+  const convId = await getOrCreateConversationForProperty(property.id);
+  if (convId) {
+    window.location.href = `/mensagens#${convId}`;
+  }
+};
+
 const PropertyDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();

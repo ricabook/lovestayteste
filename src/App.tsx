@@ -13,6 +13,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ProprietarioProperties from "./pages/ProprietarioProperties";
 import PublicProfile from "./pages/PublicProfile";
 import NotFound from "./pages/NotFound";
+import Messages from "./pages/Messages";
 
 const queryClient = new QueryClient();
 
@@ -33,7 +34,10 @@ const App = () => (
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/propriedades" element={<ProprietarioProperties />} />
               <Route path="/profile/:userId" element={<PublicProfile />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              {/* Mensagens */}
+<Route path="/mensagens" element={<Messages />} />
+{/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>

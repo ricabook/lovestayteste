@@ -194,8 +194,6 @@ const Navbar = () => {
           </div>
         )}
       </div>
-      {/* Mensagens */}
-  <a href="/mensagens" className="px-3 py-2 rounded-md text-sm font-medium">Mensagens</a>
 </nav>
   );
 };

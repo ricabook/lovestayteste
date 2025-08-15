@@ -667,6 +667,15 @@ const PropertyDetails = () => {
                     {bookingLoading ? 'Processando...' : 'Reservar'}
                   </Button>
 
+                  <Button 
+                    variant="outline"
+                    onClick={handleStartChat}
+                    className="w-full h-12 mt-2"
+                  >
+                    Iniciar conversa com o proprietário
+                  </Button>
+
+
                   {bookedDates.length > 0 && (
                     <p className="text-xs text-muted-foreground mt-3 text-center">
                       ⚠️ Datas em cinza no calendário já estão ocupadas

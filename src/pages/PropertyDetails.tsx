@@ -2,16 +2,12 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { format, differenceInDays, addDays, parseISO, eachDayOfInterval, isEqual } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, MapPin, Users, Bed, Bath, Calendar as CalendarIcon, CheckCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ArrowLeft, MapPin, CheckCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { getOrCreateConversationForProperty } from '@/hooks/useMessaging';
 import PropertyReviews from '@/components/PropertyReviews';
@@ -37,7 +33,7 @@ interface Property {
   images: string[];
   is_available: boolean;
   created_at: string;
-  owner_id?: string; // Optional since public view doesn't include it
+  owner_id?: string;
 }
 
 const PropertyDetails = () => {
@@ -46,10 +42,23 @@ const PropertyDetails = () => {
   const location = useLocation();
   const { user } = useAuth();
   const [property, setProperty] = useState<Property | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [bookingConfirmed, setBookingConfirmed] = useState(false);
+  const [bookedDates, setBookedDates] = useState<Date[]>([]);
+  
+  // Booking form states
+  const [checkInDate, setCheckInDate] = useState<Date>();
+  const [checkOutDate, setCheckOutDate] = useState<Date>();
+  const [guestCount, setGuestCount] = useState(1);
+  const [bookingLoading, setBookingLoading] = useState(false);
+
   const handleStartChat = async () => {
     try {
-      if (!property?.id) {
-        toast({ title: 'Imóvel não encontrado.', variant: 'destructive' });
+      if (!property?.id || !(property as any).owner_id) {
+        toast({ title: 'Imóvel ou proprietário não encontrado.', variant: 'destructive' });
         return;
       }
       if (!user?.id) {
@@ -78,63 +87,148 @@ const PropertyDetails = () => {
     }
   };
 
-  const [chatLoading, setChatLoading] = useState(false);
-
-      if (!user?.id) {
-        toast({
-          title: 'Faça login para conversar com o proprietário.',
-          description: 'Você será redirecionado para a página de login.'
-        });
-        navigate(`/auth?next=${encodeURIComponent(location.pathname)}`);
-        return;
-      }
-      const convId = await getOrCreateConversationForProperty(property.id);
-      if (!convId) {
-        toast({ title: 'Não foi possível iniciar a conversa.', variant: 'destructive' });
-        return;
-      }
-      toast({ title: 'Conversa iniciada.' });
-      navigate(`/mensagens#${convId}`);
-    } catch (e) {
-      console.error('start chat error', e);
-      toast({ title: 'Erro ao iniciar conversa.', variant: 'destructive' });
-    }
-  };
-
-  const [loading, setLoading] = useState(true);
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [bookingConfirmed, setBookingConfirmed] = useState(false);
-  const [bookedDates, setBookedDates] = useState<Date[]>([]);
-  
-  // Booking form states
-  const [checkInDate, setCheckInDate] = useState<Date>();
-  const [checkOutDate, setCheckOutDate] = useState<Date>();
-  const [guestCount, setGuestCount] = useState(1);
-  const [bookingLoading, setBookingLoading] = useState(false);
-
   useEffect(() => {
     if (!id) {
       navigate('/');
       return;
     }
 
+    const fetchProperty = async () => {
+      try {
+        // First try to get from properties table to get owner_id
+        const { data: fullProperty, error: fullError } = await supabase
+          .from('properties')
+          .select('*')
+          .eq('id', id)
+          .eq('status', 'approved')
+          .eq('is_available', true)
+          .maybeSingle();
+  
+        if (fullError) {
+          console.error('Error fetching full property:', fullError);
+          // Fallback to public view
+          const { data, error } = await supabase
+            .from('properties_public')
+            .select('*')
+            .eq('id', id)
+            .maybeSingle();
+  
+          if (error) {
+            console.error('Error fetching property:', error);
+            toast({
+              title: 'Erro',
+              description: 'Erro ao carregar propriedade',
+              variant: 'destructive',
+            });
+            navigate('/');
+            return;
+          }
+  
+          if (!data) {
+            toast({
+              title: 'Propriedade não encontrada',
+              description: 'A propriedade solicitada não foi encontrada.',
+              variant: 'destructive',
+            });
+            navigate('/');
+            return;
+          }
+  
+          setProperty(data);
+        } else if (!fullProperty) {
+          toast({
+            title: 'Propriedade não encontrada',
+            description: 'A propriedade solicitada não foi encontrada.',
+            variant: 'destructive',
+          });
+          navigate('/');
+          return;
+        } else {
+          setProperty(fullProperty);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        toast({
+          title: 'Erro',
+          description: 'Erro inesperado ao carregar propriedade',
+          variant: 'destructive',
+        });
+        navigate('/');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const fetchBookedDates = async () => {
+        if (!id) return;
+        
+        try {
+          // Buscar todas as reservas confirmadas para esta propriedade
+          const { data: bookings, error: bookingsError } = await supabase
+            .from('bookings')
+            .select('check_in_date, check_out_date')
+            .eq('property_id', id)
+            .eq('status', 'confirmed');
+    
+          if (bookingsError) {
+            console.error('Error fetching booked dates:', bookingsError);
+            return;
+          }
+    
+          // Buscar datas bloqueadas pelo proprietário
+          const { data: blocks, error: blocksError } = await supabase
+            .from('property_blocks')
+            .select('blocked_date')
+            .eq('property_id', id);
+    
+          if (blocksError) {
+            console.error('Error fetching blocked dates:', blocksError);
+          }
+    
+          // Converter as datas de reserva em um array de datas ocupadas
+          const occupiedDates: Date[] = [];
+          
+          if (bookings) {
+            bookings.forEach(booking => {
+              const checkIn = parseISO(booking.check_in_date);
+              const checkOut = parseISO(booking.check_out_date);
+              
+              const datesInRange = eachDayOfInterval({
+                start: checkIn,
+                end: addDays(checkOut, -1) // Excluir o dia de check-out
+              });
+              
+              occupiedDates.push(...datesInRange);
+            });
+          }
+    
+          // Adicionar datas bloqueadas pelo proprietário
+          if (blocks) {
+            blocks.forEach(block => {
+              occupiedDates.push(parseISO(block.blocked_date));
+            });
+          }
+          
+          setBookedDates(occupiedDates);
+        } catch (error) {
+          console.error('Error fetching booked dates:', error);
+        }
+    };
+
     fetchProperty();
     fetchBookedDates();
 
-    // Subscribe to real-time updates for bookings
     const channel = supabase
       .channel('booking-updates')
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*',
           schema: 'public',
           table: 'bookings',
           filter: `property_id=eq.${id}`
         },
         () => {
-          // Refetch booked dates when a booking is updated (e.g., confirmed by admin)
           fetchBookedDates();
         }
       )
@@ -145,145 +239,22 @@ const PropertyDetails = () => {
     };
   }, [id, navigate]);
 
-  const fetchBookedDates = async () => {
-    if (!id) return;
-    
-    try {
-      // Buscar todas as reservas confirmadas para esta propriedade
-      const { data: bookings, error: bookingsError } = await supabase
-        .from('bookings')
-        .select('check_in_date, check_out_date')
-        .eq('property_id', id)
-        .eq('status', 'confirmed');
-
-      if (bookingsError) {
-        console.error('Error fetching booked dates:', bookingsError);
-        return;
-      }
-
-      // Buscar datas bloqueadas pelo proprietário
-      const { data: blocks, error: blocksError } = await supabase
-        .from('property_blocks')
-        .select('blocked_date')
-        .eq('property_id', id);
-
-      if (blocksError) {
-        console.error('Error fetching blocked dates:', blocksError);
-      }
-
-      // Converter as datas de reserva em um array de datas ocupadas
-      const occupiedDates: Date[] = [];
-      
-      if (bookings) {
-        bookings.forEach(booking => {
-          const checkIn = parseISO(booking.check_in_date);
-          const checkOut = parseISO(booking.check_out_date);
-          
-          // Incluir todas as datas entre check-in e check-out (exclusive check-out)
-          const datesInRange = eachDayOfInterval({
-            start: checkIn,
-            end: addDays(checkOut, -1) // Excluir o dia de check-out
-          });
-          
-          occupiedDates.push(...datesInRange);
-        });
-      }
-
-      // Adicionar datas bloqueadas pelo proprietário
-      if (blocks) {
-        blocks.forEach(block => {
-          occupiedDates.push(parseISO(block.blocked_date));
-        });
-      }
-      
-      setBookedDates(occupiedDates);
-    } catch (error) {
-      console.error('Error fetching booked dates:', error);
-    }
-  };
-
-  const fetchProperty = async () => {
-    try {
-      // First try to get from properties table to get owner_id
-      const { data: fullProperty, error: fullError } = await supabase
-        .from('properties')
-        .select('*')
-        .eq('id', id)
-        .eq('status', 'approved')
-        .eq('is_available', true)
-        .maybeSingle();
-
-      if (fullError) {
-        console.error('Error fetching full property:', fullError);
-        // Fallback to public view
-        const { data, error } = await supabase
-          .from('properties_public')
-          .select('*')
-          .eq('id', id)
-          .maybeSingle();
-
-        if (error) {
-          console.error('Error fetching property:', error);
-          toast({
-            title: 'Erro',
-            description: 'Erro ao carregar propriedade',
-            variant: 'destructive',
-          });
-          navigate('/');
-          return;
-        }
-
-        if (!data) {
-          toast({
-            title: 'Propriedade não encontrada',
-            description: 'A propriedade solicitada não foi encontrada.',
-            variant: 'destructive',
-          });
-          navigate('/');
-          return;
-        }
-
-        setProperty(data);
-      } else if (!fullProperty) {
-        toast({
-          title: 'Propriedade não encontrada',
-          description: 'A propriedade solicitada não foi encontrada.',
-          variant: 'destructive',
-        });
-        navigate('/');
-        return;
-      } else {
-        setProperty(fullProperty);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      toast({
-        title: 'Erro',
-        description: 'Erro inesperado ao carregar propriedade',
-        variant: 'destructive',
-      });
-      navigate('/');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const calculateTotalPrice = () => {
     if (!checkInDate || !checkOutDate || !property) return 0;
     const nights = differenceInDays(checkOutDate, checkInDate);
-    return nights * property.price_per_night;
+    return nights > 0 ? nights * property.price_per_night : 0;
   };
 
   const calculateTotalNights = () => {
     if (!checkInDate || !checkOutDate) return 0;
-    return differenceInDays(checkOutDate, checkInDate);
+    const nights = differenceInDays(checkOutDate, checkInDate);
+    return nights > 0 ? nights : 0;
   };
 
-  // Função para verificar se um período tem conflito com reservas existentes
   const hasDateConflict = (startDate: Date, endDate: Date) => {
     const requestedDates = eachDayOfInterval({
       start: startDate,
-      end: addDays(endDate, -1) // Excluir o dia de check-out
+      end: addDays(endDate, -1)
     });
     
     return requestedDates.some(requestedDate => 
@@ -302,16 +273,15 @@ const PropertyDetails = () => {
       return;
     }
 
-    if (!checkInDate || !checkOutDate) {
+    if (!checkInDate || !checkOutDate || calculateTotalNights() <= 0) {
       toast({
-        title: 'Datas obrigatórias',
-        description: 'Por favor, selecione as datas de check-in e check-out.',
+        title: 'Datas inválidas',
+        description: 'Por favor, selecione as datas de check-in e check-out corretamente.',
         variant: 'destructive',
       });
       return;
     }
 
-    // Verificar se há conflito de datas
     if (hasDateConflict(checkInDate, checkOutDate)) {
       toast({
         title: 'Datas não disponíveis',
@@ -349,9 +319,7 @@ const PropertyDetails = () => {
           status: 'pending'
         });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       setBookingConfirmed(true);
       toast({
@@ -371,12 +339,12 @@ const PropertyDetails = () => {
   };
 
   const isDateDisabled = (date: Date) => {
-    // Desabilitar datas no passado
-    if (date < new Date()) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (date < today) {
       return true;
     }
     
-    // Desabilitar datas já ocupadas
     return bookedDates.some(bookedDate => isEqual(date, bookedDate));
   };
 
@@ -442,12 +410,11 @@ const PropertyDetails = () => {
       <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
         <div className="mb-6">
           <div className="flex items-center mb-4">
             <Button 
               variant="ghost" 
-              onClick={() => navigate('/')}
+              onClick={() => navigate(-1)}
               className="mr-4 p-2"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -468,11 +435,9 @@ const PropertyDetails = () => {
           </div>
         </div>
 
-        {/* Images Gallery */}
         <div className="mb-8">
           {property.images && property.images.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-2 h-[400px] md:h-[500px] rounded-xl overflow-hidden">
-              {/* Main Image */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2 h-[400px] md:h-[500px] rounded-xl overflow-hidden relative">
               <div className="md:col-span-2 md:row-span-2">
                 <img
                   src={property.images[0]}
@@ -485,7 +450,6 @@ const PropertyDetails = () => {
                 />
               </div>
               
-              {/* Secondary Images */}
               {property.images.slice(1, 5).map((imageUrl, index) => (
                 <div key={index + 1} className="hidden md:block">
                   <img
@@ -500,8 +464,7 @@ const PropertyDetails = () => {
                 </div>
               ))}
               
-              {/* Show All Photos Button */}
-              {property.images.length > 5 && (
+              {property.images.length > 1 && (
                 <Button
                   variant="outline"
                   className="absolute bottom-4 right-4 bg-background/80 backdrop-blur-sm"
@@ -521,11 +484,8 @@ const PropertyDetails = () => {
           )}
         </div>
 
-        {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Content */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Property Info */}
             <div className="border-b pb-8">
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -543,7 +503,6 @@ const PropertyDetails = () => {
               </div>
             </div>
 
-            {/* Description */}
             <div className="border-b pb-8">
               <h3 className="text-lg font-semibold mb-4">Sobre este espaço</h3>
               <p className="text-muted-foreground leading-relaxed">
@@ -551,7 +510,6 @@ const PropertyDetails = () => {
               </p>
             </div>
 
-            {/* Amenities */}
             {property.amenities && property.amenities.length > 0 && (
               <div className="border-b pb-8">
                 <h3 className="text-lg font-semibold mb-4">O que este lugar oferece</h3>
@@ -566,7 +524,6 @@ const PropertyDetails = () => {
               </div>
             )}
 
-            {/* Owner Info - Only show if available */}
             {property.owner_id && (
               <div className="border-b pb-8">
                 <h3 className="text-lg font-semibold mb-4">Anfitrião</h3>
@@ -574,7 +531,6 @@ const PropertyDetails = () => {
               </div>
             )}
 
-            {/* Location */}
             <div className="border-b pb-8">
               <h3 className="text-lg font-semibold mb-4">Onde você vai ficar</h3>
               <div className="space-y-2">
@@ -583,18 +539,15 @@ const PropertyDetails = () => {
               </div>
             </div>
 
-            {/* Reviews */}
             <div>
               <PropertyReviews propertyId={property.id} />
             </div>
           </div>
 
-          {/* Right Sidebar - Booking Form */}
           <div className="lg:col-span-1">
             <div className="sticky top-8">
               <Card className="border shadow-lg">
                 <CardContent className="p-6">
-                  {/* Price */}
                   <div className="mb-6">
                     <div className="flex items-baseline gap-2">
                       <span className="text-2xl font-bold">
@@ -604,7 +557,6 @@ const PropertyDetails = () => {
                     </div>
                   </div>
 
-                  {/* Dates Selection */}
                   <div className="space-y-3 mb-4">
                     <div className="grid grid-cols-2 gap-0 border rounded-lg overflow-hidden">
                       <div className="border-r">
@@ -661,7 +613,6 @@ const PropertyDetails = () => {
                       </div>
                     </div>
 
-                    {/* Guests */}
                     <div className="border rounded-lg">
                       <div className="flex items-center justify-between p-4">
                         <div>
@@ -692,11 +643,10 @@ const PropertyDetails = () => {
                     </div>
                   </div>
 
-                  {/* Booking Summary */}
-                  {checkInDate && checkOutDate && (
+                  {checkInDate && checkOutDate && calculateTotalNights() > 0 && (
                     <div className="space-y-3 mb-4 pt-4 border-t">
                       <div className="flex justify-between text-sm">
-                        <span>R$ {property.price_per_night.toFixed(2)} x {calculateTotalNights()} diárias</span>
+                        <span>R$ {property.price_per_night.toFixed(2)} x {calculateTotalNights()} {calculateTotalNights() === 1 ? 'diária' : 'diárias'}</span>
                         <span>R$ {calculateTotalPrice().toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between font-semibold text-lg">
@@ -708,7 +658,7 @@ const PropertyDetails = () => {
 
                   <Button 
                     onClick={handleBooking}
-                    disabled={!checkInDate || !checkOutDate || !property.is_available || bookingLoading}
+                    disabled={!checkInDate || !checkOutDate || !property.is_available || bookingLoading || calculateTotalNights() <= 0}
                     className="w-full h-12 text-lg"
                     size="lg"
                   >
@@ -719,8 +669,7 @@ const PropertyDetails = () => {
                     variant="outline"
                     onClick={handleStartChat}
                     className="w-full h-12 mt-2"
-                   disabled={chatLoading}
-                   disabled={chatLoading}>
+                    disabled={chatLoading}>
                     Iniciar conversa com o proprietário
                   </Button>
 
@@ -736,7 +685,6 @@ const PropertyDetails = () => {
         </div>
       </div>
 
-      {/* Image Lightbox */}
       <ImageLightbox
         images={property.images || []}
         initialIndex={selectedImageIndex}

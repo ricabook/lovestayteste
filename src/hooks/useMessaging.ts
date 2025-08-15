@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
-import { v4 as uuid } from "uuid";
 
 type Message = Database["public"]["Tables"]["messages"]["Row"];
 
@@ -10,7 +9,10 @@ export function useMessaging(conversationId?: string) {
   const [loading, setLoading] = useState<boolean>(true);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  // Load initial messages
+  // Gera ID temporário simples
+  const genTempId = () => "temp-" + Math.random().toString(36).substring(2, 9);
+
+  // Carrega mensagens iniciais
   useEffect(() => {
     let active = true;
     const load = async () => {
@@ -34,7 +36,7 @@ export function useMessaging(conversationId?: string) {
     };
   }, [conversationId]);
 
-  // Realtime subscription
+  // Assinatura realtime
   useEffect(() => {
     if (!conversationId) return;
     if (channelRef.current) {
@@ -49,11 +51,10 @@ export function useMessaging(conversationId?: string) {
         (payload) => {
           const msg = payload.new as Message;
           setMessages((prev) => {
-            // de-dup by id (reconcile optimistic temp)
             if (prev.some((m) => m.id === msg.id)) return prev;
-            // replace temp (client-only) if matches by created_at & body
-            const next = prev.map((m) => (m.id.startsWith("temp-") && m.body === msg.body ? msg : m));
-            // If not replaced, append
+            const next = prev.map((m) => 
+              m.id.startsWith("temp-") && m.body === msg.body ? msg : m
+            );
             if (!next.some((m) => m.id === msg.id)) next.push(msg);
             return next;
           });
@@ -67,22 +68,20 @@ export function useMessaging(conversationId?: string) {
     };
   }, [conversationId]);
 
-  // Optimistic send
+  // Envio otimista
   const sendMessage = async (body: string) => {
     if (!conversationId || !body.trim()) return;
-    const tempId = "temp-" + uuid();
+    const tempId = genTempId();
     const optimistic: Message = {
       id: tempId,
       conversation_id: conversationId,
-      sender_id: "me", // placeholder; won't be used after reconciliation
+      sender_id: "me",
       body: body.trim(),
       created_at: new Date().toISOString(),
     } as Message;
 
-    // Immediate UI feedback
     setMessages((prev) => [...prev, optimistic]);
 
-    // Insert and fetch real row (with ids & timestamps)
     const { data, error } = await supabase
       .from("messages")
       .insert({ conversation_id: conversationId, body: body.trim() })
@@ -91,13 +90,11 @@ export function useMessaging(conversationId?: string) {
 
     if (error) {
       console.error("sendMessage", error);
-      // rollback optimistic
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       throw error;
     }
 
     if (data) {
-      // Replace optimistic with real one
       setMessages((prev) => prev.map((m) => (m.id === tempId ? (data as Message) : m)));
     }
   };

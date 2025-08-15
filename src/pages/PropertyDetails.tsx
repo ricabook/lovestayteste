@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, MapPin, Users, Bed, Bath, Calendar as CalendarIcon, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Navbar from '@/components/Navbar';
+import { getOrCreateConversationForProperty } from '@/hooks/useMessaging';
 import PropertyReviews from '@/components/PropertyReviews';
 import PropertyRating from '@/components/PropertyRating';
 import PropertyOwnerCard from '@/components/PropertyOwnerCard';

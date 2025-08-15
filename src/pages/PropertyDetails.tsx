@@ -41,13 +41,11 @@ interface Property {
 }
 
 const PropertyDetails = () => {
-<<<<<<< HEAD
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
   const [property, setProperty] = useState<Property | null>(null);
-
   const handleStartChat = async () => {
     try {
       if (!property?.id) {
@@ -63,9 +61,11 @@ const PropertyDetails = () => {
         return;
       }
       setChatLoading(true);
-      const { id: convId, error } = await getOrCreateConversationForProperty(property.id, (property as any).owner_id ?? undefined);
+      const res: any = await getOrCreateConversationForProperty(property.id, (property as any).owner_id);
+      const convId = typeof res === 'string' ? res : res?.id;
+      const errMsg = typeof res === 'string' ? null : res?.error;
       if (!convId) {
-        toast({ title: 'Não foi possível iniciar a conversa', description: error || 'Tente novamente em instantes.', variant: 'destructive' });
+        toast({ title: 'Não foi possível iniciar a conversa', description: errMsg || 'Tente novamente em instantes.', variant: 'destructive' });
         return;
       }
       toast({ title: 'Conversa iniciada.' });
@@ -77,16 +77,11 @@ const PropertyDetails = () => {
       setChatLoading(false);
     }
   };
+
   const [chatLoading, setChatLoading] = useState(false);
-=======
->>>>>>> ce632586276e0ac2ae127789a9ec8c502a017f35
 
       if (!user?.id) {
-<<<<<<< HEAD
         toast({
-=======
-        toast({ 
->>>>>>> ce632586276e0ac2ae127789a9ec8c502a017f35
           title: 'Faça login para conversar com o proprietário.',
           description: 'Você será redirecionado para a página de login.'
         });
@@ -106,14 +101,6 @@ const PropertyDetails = () => {
     }
   };
 
-<<<<<<< HEAD
-=======
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { user } = useAuth();
-  const [property, setProperty] = useState<Property | null>(null);
->>>>>>> ce632586276e0ac2ae127789a9ec8c502a017f35
   const [loading, setLoading] = useState(true);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -732,6 +719,7 @@ const PropertyDetails = () => {
                     variant="outline"
                     onClick={handleStartChat}
                     className="w-full h-12 mt-2"
+                   disabled={chatLoading}
                    disabled={chatLoading}>
                     Iniciar conversa com o proprietário
                   </Button>

@@ -118,7 +118,7 @@ export default function Messages() {
     const owner = ownersMap[c.owner_id];
     const propTitle = prop?.title ?? "Imóvel";
     const ownerName = owner?.full_name ?? "Proprietário";
-    return `Propriedade: ${propTitle} - Proprietário: ${ownerName}`;
+    return `${propTitle} - ${ownerName}`;
   };
 
   const handleSelectConversation = (conversationId: string) => {
@@ -204,15 +204,18 @@ export default function Messages() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-1 container mx-auto py-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Mensagens</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[70vh]">
-            <div className="md:col-span-1 space-y-2 overflow-hidden">
-              <ScrollArea className="h-full">
-                <div className="space-y-2 pr-2">
+      <main className="flex-1 container mx-auto px-4 py-4 max-w-7xl">
+        <div className="h-[calc(100vh-140px)] border rounded-lg bg-card">
+          <div className="flex items-center justify-between p-6 border-b">
+            <h1 className="text-2xl font-semibold">Mensagens</h1>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 h-[calc(100%-73px)]">
+            <div className="lg:col-span-1 border-r overflow-hidden">
+              <div className="p-4 border-b bg-muted/30">
+                <h2 className="font-medium text-sm text-muted-foreground">Conversas</h2>
+              </div>
+              <ScrollArea className="h-[calc(100%-57px)]">
+                <div className="space-y-1 p-2">
                   {loading ? (
                     <div className="text-center py-8 text-muted-foreground">Carregando conversas...</div>
                   ) : conversations.length === 0 ? (
@@ -221,13 +224,15 @@ export default function Messages() {
                     conversations.map((c) => (
                       <Button
                         key={c.id}
-                        variant={c.id === activeId ? "default" : "outline"}
-                        className="w-full justify-start h-auto p-4"
+                        variant={c.id === activeId ? "secondary" : "ghost"}
+                        className="w-full justify-start h-auto p-3 text-left min-h-[60px]"
                         onClick={() => setActiveId(c.id)}
                       >
-                        <div className="flex flex-col items-start w-full">
-                          <span className="font-medium text-left text-sm">{renderLabel(c)}</span>
-                          <span className="text-xs opacity-70 mt-1">
+                        <div className="flex flex-col items-start w-full space-y-1 overflow-hidden">
+                          <span className="font-medium text-sm leading-tight break-words hyphens-auto w-full">
+                            {renderLabel(c)}
+                          </span>
+                          <span className="text-xs text-muted-foreground flex-shrink-0">
                             {format(new Date(c.last_message_at), "dd/MM/yyyy HH:mm")}
                           </span>
                         </div>
@@ -237,19 +242,20 @@ export default function Messages() {
                 </div>
               </ScrollArea>
             </div>
-            <div className="md:col-span-2 overflow-hidden">
-              <div className="h-full">
-                {activeId ? (
-                  <ChatThread conversationId={activeId} />
-                ) : (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    Selecione uma conversa para visualizar.
+            <div className="lg:col-span-2 overflow-hidden">
+              {activeId ? (
+                <ChatThread conversationId={activeId} />
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  <div className="text-center">
+                    <p className="text-lg mb-2">Selecione uma conversa</p>
+                    <p className="text-sm">Escolha uma conversa da lista para começar a conversar</p>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </main>
     </div>
   );

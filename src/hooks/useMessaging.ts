@@ -58,7 +58,14 @@ export function useMessaging(conversationId?: string) {
 
   const sendMessage = async (body: string) => {
     if (!conversationId || !body.trim()) return;
-    const { error } = await supabase.from("messages").insert({ conversation_id: conversationId, body });
+    const { data: userResp } = await supabase.auth.getUser();
+    const senderId = userResp?.user?.id;
+    if (!senderId) return;
+    const { error } = await supabase.from("messages").insert({ 
+      conversation_id: conversationId, 
+      body, 
+      sender_id: senderId 
+    });
     if (error) console.error("sendMessage error:", error);
   };
 
